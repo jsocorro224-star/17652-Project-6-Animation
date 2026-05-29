@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Motion in Space Model</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: white;
+    color: #111;
+  }
+
+  .page {
+    display: grid;
+    grid-template-columns: 1fr 370px;
+    gap: 14px;
+    padding: 14px;
+    box-sizing: border-box;
+  }
+
+  .plotBox, .notes {
+    border: 1px solid #d8dce5;
+    border-radius: 14px;
+    background: white;
+  }
+
+  .plotBox {
+    position: relative;
+    min-height: 720px;
+    overflow: hidden;
+  }
+
+  canvas {
+    width: 100%;
+    height: 720px;
+    display: block;
+  }
+
+  .controls {
+    position: absolute;
+    left: 16px;
+    bottom: 14px;
+    right: 16px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    background: rgba(255,255,255,.94);
+    padding: 10px;
+    border: 1px solid #d8dce5;
+    border-radius: 10px;
+  }
+
+  button {
+    padding: 7px 12px;
+    border: 1px solid #999;
+    border-radius: 8px;
+    background: #f7f7f7;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  input[type=range] {
+    flex: 1;
+  }
+
+  .time {
+    min-width: 88px;
+    font-weight: bold;
+  }
+
+  .notes {
+    padding: 22px 24px;
+    font-size: 15px;
+    line-height: 1.35;
+  }
+
+  h1 {
+    font-size: 22px;
+    margin: 0 0 12px 0;
+  }
+
+  h2 {
+    font-size: 16px;
+    margin: 18px 0 8px 0;
+  }
+
+  ul {
+    padding-left: 20px;
+    margin-top: 6px;
+  }
+
+  li {
+    margin: 5px 0;
+  }
+
+  .blue { color: royalblue; }
+  .red { color: red; }
+  .green { color: green; }
+  .soft { color: #444; }
+</style>
+</head>
+
+<body>
+<div class="page">
+  <div class="plotBox">
+    <canvas id="canvas" width="1100" height="720"></canvas>
+
+    <div class="controls">
+      <button id="playButton">Play</button>
+      <button id="pauseButton">Pause</button>
+      <button id="catchButton">Go to t = 4.5 s</button>
+      <input id="slider" type="range" min="0" max="6" value="0" step="0.01">
+      <div class="time" id="timeReadout">t = 0.00 s</div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <h1>Motion in Space Model</h1>
+
+    <p>
+      This complete 3D-style model shows the Ferris wheel, the original throw,
+      and the corrected throw.
+    </p>
+
+    <h2>Key points</h2>
+    <ul>
+      <li>Top / catch point: <b>(0, 0, 100)</b></li>
+      <li>Bryce / release point: <b>(41.04, 112.76, 0)</b></li>
+      <li>Original ball at t = 4.5 s: <b>(17.14, -14.59, 104.68)</b></li>
+      <li>Corrected ball at t = 4.5 s: <b>(0, 0, 100)</b></li>
+    </ul>
+
+    <h2>Result at t = 4.5 s</h2>
+    <ul>
+      <li>Susan is at the top.</li>
+      <li>Original throw misses by <b>22.99 ft</b>.</li>
+      <li>Corrected throw reaches Susan.</li>
+    </ul>
+
+    <h2>Curve tops</h2>
+    <ul>
+      <li>Original curve top: <b>141.8 ft</b></li>
+      <li>Corrected curve top: <b>138.7 ft</b></li>
+    </ul>
+
+    <h2>Visual key</h2>
+    <ul>
+      <li><b class="blue">Blue</b> curve: Ferris wheel</li>
+      <li><b class="red">Red dashed</b> curve: original ball path</li>
+      <li><b class="green">Green dashed</b> curve: corrected ball path</li>
+      <li>Thin black line: center support</li>
+      <li>Gray dotted line: miss distance</li>
+      <li>Bold axis numbers show feet along x, y, and z.</li>
+    </ul>
+
+    <p class="soft">
+      Move the time slider or press Play to view the motion.
+    </p>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const slider = document.getElementById("slider");
+const timeReadout = document.getElementById("timeReadout");
+const playButton = document.getElementById("playButton");
+const pauseButton = document.getElementById("pauseButton");
+const catchButton = document.getElementById("catchButton");
+
+const R = 50;
+const omega = Math.PI / 9;
+let currentTime = 0;
+let running = false;
+let lastStamp = null;
+
+function deg(a) {
+  return a * Math.PI / 180;
+}
+
+function susan(t) {
+  return {
+    x: 0,
+    y: R * Math.cos(omega * t),
+    z: R + R * Math.sin(omega * t)
+  };
+}
+
+function originalBall(t) {
+  return {
+    x: 120*Math.sin(deg(20)) - 55*Math.sin(deg(20))*t + 3*t*t,
+    y: 120*Math.cos(deg(20)) - 55*Math.cos(deg(20))*t + 6*Math.cos(deg(30))*t*t,
+    z: 55*Math.sqrt(3)*t - 16*t*t
+  };
+}
+
+function correctedBall(t) {
+  return {
+    x: 41.042417 - 22.620537*t + 3*t*t,
+    y: 112.763114 - 48.441156*t + 5.196152*t*t,
+    z: 94.222222*t - 16*t*t
+  };
+}
+
+function project(p) {
+  const scale = 4.05;
+  const originX = 458;
+  const originY = 575;
+
+  return {
+    x: originX + scale * (p.x * 0.95 + p.y * 0.32),
+    y: originY - scale * (p.z * 0.95) + scale * (p.y * 0.20)
+  };
+}
+
+function labelBox(x, y, text, font, padX, padY) {
+  ctx.save();
+  ctx.font = font || "bold 13px Arial";
+  const m = ctx.measureText(text);
+  const w = m.width + (padX || 8);
+  const h = 17 + (padY || 2);
+  ctx.fillStyle = "rgba(255,255,255,.90)";
+  ctx.fillRect(x - 3, y - 13, w, h);
+  ctx.strokeStyle = "rgba(210,210,210,.8)";
+  ctx.lineWidth = 0.8;
+  ctx.strokeRect(x - 3, y - 13, w, h);
+  ctx.fillStyle = "#111";
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+function drawLine3D(a, b, color, width, dash) {
+  const pa = project(a);
+  const pb = project(b);
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.setLineDash(dash || []);
+  ctx.beginPath();
+  ctx.moveTo(pa.x, pa.y);
+  ctx.lineTo(pb.x, pb.y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawPoint3D(p, color, radius, label, dx, dy) {
+  const pp = project(p);
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(pp.x, pp.y, radius, 0, 2*Math.PI);
+  ctx.fill();
+
+  if (label) {
+    ctx.font = "14px Arial";
+    ctx.fillStyle = "#111";
+    ctx.fillText(label, pp.x + (dx || 8), pp.y + (dy || -8));
+  }
+  ctx.restore();
+}
+
+function drawPath(pointFunction, t0, t1, step, color, width, dash) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.setLineDash(dash || []);
+  ctx.beginPath();
+
+  let first = true;
+  for (let t = t0; t <= t1 + 0.0001; t += step) {
+    const p = project(pointFunction(t));
+    if (first) {
+      ctx.moveTo(p.x, p.y);
+      first = false;
+    } else {
+      ctx.lineTo(p.x, p.y);
+    }
+  }
+
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawFerrisWheel() {
+  ctx.save();
+  ctx.strokeStyle = "royalblue";
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+
+  for (let a = 0; a <= 2*Math.PI + 0.01; a += 0.03) {
+    const point = {
+      x: 0,
+      y: R * Math.cos(a),
+      z: R + R * Math.sin(a)
+    };
+    const p = project(point);
+    if (a === 0) {
+      ctx.moveTo(p.x, p.y);
+    } else {
+      ctx.lineTo(p.x, p.y);
+    }
+  }
+
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawGridBase() {
+  for (let x = -40; x <= 80; x += 20) {
+    drawLine3D({x:x, y:-60, z:0}, {x:x, y:130, z:0}, "#eeeeee", 1);
+  }
+
+  for (let y = -60; y <= 130; y += 20) {
+    drawLine3D({x:-40, y:y, z:0}, {x:80, y:y, z:0}, "#eeeeee", 1);
+  }
+}
+
+function drawAxisTick(point, axis, label, lx, ly) {
+  let a = {x: point.x, y: point.y, z: point.z};
+  let b = {x: point.x, y: point.y, z: point.z};
+
+  if (axis === "x") {
+    a.y -= 3.5;
+    b.y += 3.5;
+  }
+
+  if (axis === "y") {
+    a.x -= 3.5;
+    b.x += 3.5;
+  }
+
+  if (axis === "z") {
+    a.x -= 3.0;
+    b.x += 3.0;
+  }
+
+  drawLine3D(a, b, "#111", 2);
+  const p = project(point);
+  labelBox(p.x + lx, p.y + ly, label, "bold 13px Arial");
+}
+
+function drawBoldAxesAndNumbers() {
+  drawLine3D({x:-40,y:0,z:0}, {x:80,y:0,z:0}, "#111", 2.3);
+  drawLine3D({x:0,y:-60,z:0}, {x:0,y:130,z:0}, "#111", 2.3);
+  drawLine3D({x:0,y:0,z:0}, {x:0,y:0,z:160}, "#111", 2.3);
+
+  for (let x = -40; x <= 80; x += 20) {
+    drawAxisTick({x:x,y:0,z:0}, "x", String(x), -9, 25);
+  }
+
+  for (let y = -60; y <= 120; y += 20) {
+    drawAxisTick({x:0,y:y,z:0}, "y", String(y), 8, 20);
+  }
+
+  for (let z = 0; z <= 160; z += 20) {
+    drawAxisTick({x:0,y:0,z:z}, "z", String(z), -44, 5);
+  }
+
+  let px = project({x:84,y:0,z:0});
+  labelBox(px.x + 6, px.y + 8, "x distance in ft", "bold 14px Arial");
+
+  let py = project({x:0,y:133,z:0});
+  labelBox(py.x + 8, py.y + 8, "y distance in ft", "bold 14px Arial");
+
+  let pz = project({x:0,y:0,z:163});
+  labelBox(pz.x + 8, pz.y - 2, "z height in ft", "bold 14px Arial");
+}
+
+function drawLegend() {
+  const x = 22;
+  let y = 24;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(255,255,255,.94)";
+  ctx.strokeStyle = "#cccccc";
+  ctx.lineWidth = 1;
+  ctx.roundRect(x, y, 292, 172, 10);
+  ctx.fill();
+  ctx.stroke();
+
+  y += 26;
+  ctx.font = "14px Arial";
+  legendLine(x+16, y, "royalblue", [], "Ferris wheel");
+  y += 24;
+  legendLine(x+16, y, "red", [10,7], "Original ball path");
+  y += 24;
+  legendLine(x+16, y, "green", [10,7], "Corrected ball path");
+  y += 24;
+  legendLine(x+16, y, "black", [], "Center support");
+  y += 24;
+  legendLine(x+16, y, "gray", [3,6], "Miss distance");
+  y += 24;
+  ctx.fillStyle = "#111";
+  ctx.fillText("Axis numbers show feet.", x+16, y+5);
+  ctx.restore();
+}
+
+function legendLine(x, y, color, dash, text) {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = color === "royalblue" ? 5 : 3;
+  ctx.setLineDash(dash);
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + 42, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#111";
+  ctx.font = "14px Arial";
+  ctx.fillText(text, x + 54, y + 5);
+  ctx.restore();
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.font = "24px Arial";
+  ctx.fillStyle = "#111";
+  ctx.fillText("3D Motion Model", 22, 225);
+
+  drawGridBase();
+
+  drawPath(originalBall, 0, 6, 0.035, "red", 4, [10,7]);
+  drawPath(correctedBall, 0, 6, 0.035, "green", 4, [10,7]);
+
+  drawFerrisWheel();
+
+  drawLine3D({x:0,y:0,z:0}, {x:0,y:0,z:100}, "black", 1.6);
+
+  const base = {x:0, y:0, z:0};
+  const center = {x:0, y:0, z:50};
+  const top = {x:0, y:0, z:100};
+  const bryce = {x:120*Math.sin(deg(20)), y:120*Math.cos(deg(20)), z:0};
+
+  const s = susan(currentTime);
+  const ob = originalBall(currentTime);
+  const cb = correctedBall(currentTime);
+
+  const s4 = susan(4.5);
+  const o4 = originalBall(4.5);
+
+  drawLine3D(s4, o4, "gray", 2, [3,6]);
+
+  drawBoldAxesAndNumbers();
+
+  drawPoint3D(base, "black", 4, "Base", 8, 18);
+  drawPoint3D(center, "black", 4, "Center", 8, -8);
+  drawPoint3D(top, "black", 5, "Top", 8, -8);
+  drawPoint3D(bryce, "purple", 5, "Bryce", 8, -8);
+
+  drawPoint3D(s, "purple", 7, "Susan", 8, -8);
+  drawPoint3D(ob, "red", 6, "Original", 8, -8);
+  drawPoint3D(cb, "green", 6, "Corrected", 8, 16);
+
+  drawLegend();
+
+  ctx.save();
+  ctx.font = "16px Arial";
+  ctx.fillStyle = "#111";
+  ctx.fillText("t = " + currentTime.toFixed(2) + " s", 22, 206);
+  ctx.restore();
+
+  timeReadout.textContent = "t = " + currentTime.toFixed(2) + " s";
+  slider.value = currentTime.toFixed(2);
+}
+
+function animate(stamp) {
+  if (!running) return;
+
+  if (lastStamp === null) {
+    lastStamp = stamp;
+  }
+
+  const elapsed = (stamp - lastStamp) / 1000;
+  lastStamp = stamp;
+
+  currentTime += elapsed * 0.75;
+  if (currentTime > 6) {
+    currentTime = 0;
+  }
+
+  render();
+  requestAnimationFrame(animate);
+}
+
+playButton.addEventListener("click", function() {
+  running = true;
+  lastStamp = null;
+  requestAnimationFrame(animate);
+});
+
+pauseButton.addEventListener("click", function() {
+  running = false;
+});
+
+catchButton.addEventListener("click", function() {
+  running = false;
+  currentTime = 4.5;
+  render();
+});
+
+slider.addEventListener("input", function() {
+  running = false;
+  currentTime = Number(slider.value);
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
